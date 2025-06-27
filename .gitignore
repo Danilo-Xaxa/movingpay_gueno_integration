@@ -1,0 +1,21 @@
+# Ignora o ambiente virtual
+venv/
+
+# Ignora arquivos sensíveis e de execução
+.env
+*.log
+
+# Ignora cache do Python
+__pycache__/
+*.pyc
+
+# Ignora arquivos de backup ou temporários do VS Code ou editores
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# VS Code settings (opcional)
+.vscode/
+
+exportacoes/
