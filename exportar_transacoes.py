@@ -207,29 +207,22 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
     logging.info(f"Arquivo baixado com sucesso: {nome}")
     return caminho
 
-def extrair(caminho_tar_gz, destino="exportacoes"):
+def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
     """
-    Extrai o único arquivo CSV contido no .tar.gz para a pasta destino.
-    Verifica segurança contra path traversal.
-    Remove o .tar.gz após extração.
+    Extrai o arquivo .tar.gz diretamente para a pasta destino.
+    Em seguida, remove pastas residuais da extração.
     """
-    with tarfile.open(caminho_tar_gz, "r:gz") as tar:
-        # Filtra membros seguros
-        csv_members = [
-            m for m in tar.getmembers()
-            if m.name.lower().endswith(".csv")
-            and not os.path.isabs(m.name)
-            and ".." not in os.path.normpath(m.name).split(os.sep)
-        ]
-        if not csv_members:
-            raise Exception("Nenhum CSV válido encontrado no arquivo tar.gz.")
+    # Extrai tudo
+    with tarfile.open(caminho_tar_gz, "r:gz") as tar_gz:
+        tar_gz.extractall(destino, filter="data")
 
-        # Espera só um CSV – pega o primeiro
-        target = csv_members[0]
-        tar.extract(target, path=destino)
-        logging.info(f"Arquivo CSV extraído: {target.name}")
+    os.remove(caminho_tar_gz)  # Remove o .tar.gz
 
-    os.remove(caminho_tar_gz)
+    # Remove todas as subpastas dentro de exportacoes/
+    for nome in os.listdir(destino):
+        path = os.path.join(destino, nome)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
 
 def main():
     """
@@ -257,7 +250,7 @@ def main():
 
         logging.info(f"Arquivo contábil encontrado: {arquivo['arquivo']} (ID: {arquivo['id']})")
         caminho = baixar_arquivo(token, arquivo, customer_id)
-        extrair(caminho)
+        extrair_e_limpar(caminho)
 
     except Exception as e:
         logging.critical(f"Erro durante a execução: {e}")
