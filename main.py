@@ -61,15 +61,26 @@ def main():
 
     Se qualquer etapa falhar, a execução é interrompida com logs detalhados.
     """
-    logging.info("==== Início da execução integrada ====")
+    logging.info(f"==== Início da execução integrada em {datetime.now().isoformat()} ====")
+
     try:
         executar_script("exportar_transacoes.py")
-        executar_script("importar_transacoes.py")
-        logging.info("==== Execução integrada finalizada com sucesso ====")
     except Exception:
-        logging.critical("Execução interrompida por erro crítico.")
+        logging.critical("Execução interrompida por erro crítico ao EXPORTAR transações.")
         logging.critical("Traceback:")
         logging.critical(traceback.format_exc())
+        return
+
+    try:
+        executar_script("importar_transacoes.py")
+    except Exception:
+        logging.critical("Execução interrompida por erro crítico ao IMPORTAR transações.")
+        logging.critical("Traceback:")
+        logging.critical(traceback.format_exc())
+        return
+
+    logging.info("==== Execução integrada finalizada com sucesso ====")
+    
 
 # Executa o pipeline apenas se este arquivo for o principal
 if __name__ == "__main__":
