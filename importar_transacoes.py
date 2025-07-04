@@ -4,8 +4,13 @@ import requests
 from dotenv import load_dotenv
 
 
-# Carrega variáveis de ambiente do .env (GUENO_EMAIL, GUENO_PASSWORD, GUENO_CLIENT_KEY)
 load_dotenv()
+
+for var in ['GUENO_EMAIL', 'GUENO_PASSWORD', 'GUENO_CLIENT_KEY']:
+    if not os.getenv(var):
+        logging.critical(f"Variável de ambiente obrigatória não definida: {var}")
+        logging.shutdown()
+        raise EnvironmentError
 
 REQUEST_TIMEOUT = (10, 60)
 

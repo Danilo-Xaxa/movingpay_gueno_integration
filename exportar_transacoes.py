@@ -8,8 +8,6 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 
-# === Carregamento de variáveis sensíveis (.env) ===
-# MOVINGPAY_EMAIL e MOVINGPAY_PASSWORD são usados para login na API
 load_dotenv()
 
 REQUEST_TIMEOUT = (10, 60)
