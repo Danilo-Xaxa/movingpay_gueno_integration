@@ -8,9 +8,7 @@ load_dotenv()
 
 for var in ['GUENO_EMAIL', 'GUENO_PASSWORD', 'GUENO_CLIENT_KEY']:
     if not os.getenv(var):
-        logging.critical(f"Variável de ambiente obrigatória não definida: {var}")
-        logging.shutdown()
-        raise EnvironmentError
+        raise EnvironmentError(f"Variável de ambiente obrigatória não definida: {var}")    
 
 REQUEST_TIMEOUT = (10, 60)
 
