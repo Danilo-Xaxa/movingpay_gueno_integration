@@ -69,7 +69,7 @@ def enviar_arquivo_gueno(token, caminho_arquivo_csv):
         }
         resposta = requests.post(url, headers=headers, files=files)
 
-    if resposta.status_code == 200:
+    if resposta.status_code in [200, 201]:
         logging.info("Arquivo enviado com sucesso para a Gueno.")
     else:
         logging.critical(f"Erro ao enviar arquivo para a Gueno: {resposta.status_code} - {resposta.text}")

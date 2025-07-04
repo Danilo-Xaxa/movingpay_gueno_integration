@@ -64,7 +64,7 @@ def solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim):
     Solicita a geração de um relatório contábil na MovingPay.
     O arquivo será gerado de forma assíncrona.
     """
-    url = "https://api-reports.movingpay.com.br/excel/contabil"
+    url = "https://api-reports.movingpay.com.br/csv/customized/gueno/capturas"
     headers = {
         "Authorization": f"Bearer {token}",
         "customer": str(customer_id),
@@ -81,12 +81,13 @@ def solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim):
         "includesStatusCaptures": [],
         "removePixCaptures": False,
         "removeSplitCaptures": True,
-        "reportsSelected": [],
+        "reportsSelected": [ 1 ],
         "onlyWithTransactions": "onlyWithTransactions",
         "distribuidorId": [],
         "codigoUnidadeNegocios": 0,
-        "newReports": True,
-        "extension": "csv"
+        "newReports": False,
+        "extension": "csv",
+        "tipoRelatorioGueno": "contabil_capturas"
     }
 
     resposta = requests.post(url, json=payload, headers=headers)
@@ -118,16 +119,16 @@ def buscar_arquivo_compativel(token, customer_id, data_inicio, data_fim):
     arquivos = resposta.json().get("data", [])
 
     # Formato do nome esperado no nome do arquivo
-    data_inicio_fmt = datetime.strptime(data_inicio, "%Y-%m-%d").strftime("%d.%m.%Y")
-    data_fim_fmt = datetime.strptime(data_fim, "%Y-%m-%d").strftime("%d.%m.%Y")
-    intervalo_str = f"{data_inicio_fmt}A{data_fim_fmt}"
+    #data_inicio_fmt = datetime.strptime(data_inicio, "%Y-%m-%d").strftime("%d.%m.%Y")
+    #data_fim_fmt = datetime.strptime(data_fim, "%Y-%m-%d").strftime("%d.%m.%Y")
+    #intervalo_str = f"{data_inicio_fmt}A{data_fim_fmt}"
 
     # Filtra arquivos válidos
     arquivos_validos = [
         arq for arq in arquivos
-        if arq["arquivo"].startswith("CONTABIL")
+        if arq["arquivo"].startswith("GUENO.CAPTURAS")
         and arq["arquivo"].endswith(".tar.gz")
-        and intervalo_str in arq["arquivo"]
+        #and intervalo_str in arq["arquivo"]
     ]
 
     if not arquivos_validos:
@@ -178,7 +179,6 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
 def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
     """
     Extrai o arquivo .tar.gz diretamente para a pasta destino.
-    Move o primeiro CSV encontrado da pasta 'capturas/' para a raiz da pasta.
     Em seguida, remove pastas residuais da extração.
     """
     # Extrai tudo
@@ -186,20 +186,6 @@ def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
         tar_gz.extractall(destino)
 
     os.remove(caminho_tar_gz)  # Remove o .tar.gz
-
-    capturas_path = os.path.join(destino, "capturas")
-    if not os.path.isdir(capturas_path) or not os.listdir(capturas_path):
-        logging.warning("Pasta capturas/ está vazia ou não existe.")
-        return
-
-    # Move o primeiro CSV da pasta capturas/ para a pasta exportacoes/
-    for item in os.listdir(capturas_path):
-        if item.endswith(".csv"):
-            csv_origem = os.path.join(capturas_path, item)
-            csv_destino = os.path.join(destino, item)
-            shutil.move(csv_origem, csv_destino)
-            logging.info(f"Arquivo CSV movido: {item}")
-            break
 
     # Remove todas as subpastas dentro de exportacoes/
     for nome in os.listdir(destino):
