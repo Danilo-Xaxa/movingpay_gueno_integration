@@ -110,6 +110,10 @@ def main():
     3. Envia o arquivo para a API de importação
     """
     try:
+        if not os.path.isdir("exportacoes"):
+            logging.critical("A pasta 'exportacoes/' não existe.")
+            return
+
         # Pega o primeiro arquivo .csv encontrado na pasta exportacoes/
         nome_arquivo_csv = next(
             f for f in os.listdir("exportacoes") if f.lower().endswith(".csv")
