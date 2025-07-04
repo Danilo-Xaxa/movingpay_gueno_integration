@@ -10,6 +10,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+for var in ['MOVINGPAY_EMAIL', 'MOVINGPAY_PASSWORD']:
+    if not os.getenv(var):
+        logging.critical(f"Variável de ambiente obrigatória não definida: {var}")
+        logging.shutdown()
+        raise EnvironmentError      
+
 REQUEST_TIMEOUT = (10, 60)
 
 # === Configuração de logging ===
