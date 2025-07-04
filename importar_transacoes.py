@@ -118,13 +118,21 @@ def main():
         if not os.path.isdir("exportacoes"):
             logging.critical("A pasta 'exportacoes/' não existe.")
             return
-
-        # Pega o primeiro arquivo .csv encontrado na pasta exportacoes/
-        nome_arquivo_csv = next(
-            f for f in os.listdir("exportacoes") if f.lower().endswith(".csv")
+        
+        # Lista todos os CSVs ordenados por data de modificação (mais novo primeiro)
+        csv_files = sorted(
+            [f for f in os.listdir("exportacoes") if f.lower().endswith(".csv")],
+            key=lambda f: os.path.getmtime(os.path.join("exportacoes", f)),
+            reverse=True
         )
-        caminho_arquivo_csv = os.path.join("exportacoes", nome_arquivo_csv)
 
+        if not csv_files:
+            logging.critical("Nenhum arquivo CSV encontrado na pasta 'exportacoes/'.")
+            logging.shutdown()
+            raise FileNotFoundError
+
+        nome_arquivo_csv = csv_files[0]
+        caminho_arquivo_csv = os.path.join("exportacoes", nome_arquivo_csv)
         logging.info(f"Iniciando envio do arquivo: {nome_arquivo_csv}")
 
         token = autenticar_gueno()
