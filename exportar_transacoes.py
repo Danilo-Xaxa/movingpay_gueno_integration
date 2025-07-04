@@ -7,9 +7,12 @@ import tarfile
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+
 # === Carregamento de variáveis sensíveis (.env) ===
 # MOVINGPAY_EMAIL e MOVINGPAY_PASSWORD são usados para login na API
 load_dotenv()
+
+REQUEST_TIMEOUT = (10, 60)
 
 # === Configuração de logging ===
 # Toda a execução será registrada no arquivo 'exportacoes.log'
@@ -19,6 +22,30 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     encoding='utf-8'
 )
+
+def request_get(url, **kwargs):
+    try:
+        resp = requests.get(url, **kwargs)
+        resp.raise_for_status()
+        return resp
+    except requests.exceptions.Timeout:
+        logging.critical(f"Timeout em GET: {url}")
+        raise
+    except requests.exceptions.RequestException as e:
+        logging.critical(f"Falha em GET: {url} - {e}")
+        raise
+
+def request_post(url, **kwargs):
+    try:
+        resp = requests.post(url, **kwargs)
+        resp.raise_for_status()
+        return resp
+    except requests.exceptions.Timeout:
+        logging.critical(f"Timeout em POST: {url}")
+        raise
+    except requests.exceptions.RequestException as e:
+        logging.critical(f"Falha em POST: {url} - {e}")
+        raise
 
 def obter_datas_referencia():
     """
@@ -53,7 +80,7 @@ def autenticar():
         "password": os.getenv("MOVINGPAY_PASSWORD")
     }
 
-    resposta = requests.post(url, json=payload, headers=headers)
+    resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
     logging.info(f"Resposta do login: {resposta.text}")
     dados = resposta.json()
@@ -90,7 +117,7 @@ def solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim):
         "tipoRelatorioGueno": "contabil_capturas"
     }
 
-    resposta = requests.post(url, json=payload, headers=headers)
+    resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
     logging.info("Relatório contábil solicitado com sucesso.")
 
@@ -114,7 +141,7 @@ def buscar_arquivo_compativel(token, customer_id, data_inicio, data_fim):
         "x-mvpay-origin": "web"
     }
 
-    resposta = requests.get(url, headers=headers)
+    resposta = request_get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
     arquivos = resposta.json().get("data", [])
 
@@ -143,7 +170,9 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
     """
     Baixa o arquivo compactado da S3 da MovingPay para a pasta destino.
     """
-    os.makedirs(destino, exist_ok=True)  # Cria a pasta se não existir
+    if os.path.exists(destino):
+        shutil.rmtree(destino)
+    os.makedirs(destino)
     nome = arquivo["arquivo"]
     diretorio = arquivo["diretorio"].replace("/", "%2F")
 
@@ -158,7 +187,7 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
         "x-mvpay-origin": "web"
     }
 
-    resposta = requests.get(url_geracao, headers=headers)
+    resposta = request_get(url_geracao, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
     dados = resposta.json()
 
@@ -166,7 +195,7 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
     if not url_s3:
         raise Exception("URL de download da S3 não encontrada.")
 
-    resposta_s3 = requests.get(url_s3)
+    resposta_s3 = request_get(url_s3, timeout=REQUEST_TIMEOUT)
     resposta_s3.raise_for_status()
 
     caminho = os.path.join(destino, nome)
@@ -183,7 +212,7 @@ def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
     """
     # Extrai tudo
     with tarfile.open(caminho_tar_gz, "r:gz") as tar_gz:
-        tar_gz.extractall(destino)
+        tar_gz.extractall(destino, filter="data")
 
     os.remove(caminho_tar_gz)  # Remove o .tar.gz
 

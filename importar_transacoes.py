@@ -3,6 +3,12 @@ import logging
 import requests
 from dotenv import load_dotenv
 
+
+# Carrega variáveis de ambiente do .env (GUENO_EMAIL, GUENO_PASSWORD, GUENO_CLIENT_KEY)
+load_dotenv()
+
+REQUEST_TIMEOUT = (10, 60)
+
 # === Configuração de logging ===
 # Cria um log em 'importacoes.log' para registrar autenticação, envio de arquivo
 # e eventuais falhas na importação para a Gueno.
@@ -13,9 +19,30 @@ logging.basicConfig(
     encoding='utf-8'
 )
 
-# Carrega variáveis de ambiente do .env (GUENO_EMAIL, GUENO_PASSWORD, GUENO_CLIENT_KEY)
-load_dotenv()
+def request_get(url, **kwargs):
+    try:
+        resp = requests.get(url, **kwargs)
+        resp.raise_for_status()
+        return resp
+    except requests.exceptions.Timeout:
+        logging.critical(f"Timeout em GET: {url}")
+        raise
+    except requests.exceptions.RequestException as e:
+        logging.critical(f"Falha em GET: {url} - {e}")
+        raise
 
+def request_post(url, **kwargs):
+    try:
+        resp = requests.post(url, **kwargs)
+        resp.raise_for_status()
+        return resp
+    except requests.exceptions.Timeout:
+        logging.critical(f"Timeout em POST: {url}")
+        raise
+    except requests.exceptions.RequestException as e:
+        logging.critical(f"Falha em POST: {url} - {e}")
+        raise
+    
 def autenticar_gueno():
     """
     Realiza login na API da Gueno e retorna um token JWT válido.
@@ -36,7 +63,7 @@ def autenticar_gueno():
         "password": os.getenv("GUENO_PASSWORD")
     }
 
-    resposta = requests.post(url, json=payload, headers=headers)
+    resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()  # Lança erro se status != 200
     dados = resposta.json()
 
@@ -67,7 +94,7 @@ def enviar_arquivo_gueno(token, caminho_arquivo_csv):
         files = {
             'file': (os.path.basename(caminho_arquivo_csv), f, 'text/csv')
         }
-        resposta = requests.post(url, headers=headers, files=files)
+        resposta = request_post(url, headers=headers, files=files, timeout=REQUEST_TIMEOUT)
 
     if resposta.status_code in [200, 201]:
         logging.info("Arquivo enviado com sucesso para a Gueno.")

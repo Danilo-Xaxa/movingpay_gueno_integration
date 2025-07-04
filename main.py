@@ -61,7 +61,7 @@ def main():
 
     Se qualquer etapa falhar, a execução é interrompida com logs detalhados.
     """
-    logging.info(f"==== Início da execução integrada em {datetime.now().isoformat()} ====")
+    logging.info(f"==== Início da execução integrada em {datetime.now()} ====")
 
     try:
         executar_script("exportar_transacoes.py")
