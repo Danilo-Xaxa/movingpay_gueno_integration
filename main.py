@@ -69,7 +69,7 @@ def main():
         logging.critical("Execução interrompida por erro crítico ao EXPORTAR transações.")
         logging.critical("Traceback:")
         logging.critical(traceback.format_exc())
-        return
+        sys.exit(1)
 
     try:
         executar_script("importar_transacoes.py")
@@ -77,7 +77,7 @@ def main():
         logging.critical("Execução interrompida por erro crítico ao IMPORTAR transações.")
         logging.critical("Traceback:")
         logging.critical(traceback.format_exc())
-        return
+        sys.exit(1)
 
     logging.info("==== Execução integrada finalizada com sucesso ====")
     
