@@ -172,9 +172,7 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
     """
     Baixa o arquivo compactado da S3 da MovingPay para a pasta destino.
     """
-    if os.path.exists(destino):
-        shutil.rmtree(destino)
-    os.makedirs(destino)
+    os.makedirs(destino, exist_ok=True)
     nome = arquivo["arquivo"]
     diretorio = arquivo["diretorio"].replace("/", "%2F")
 
@@ -209,20 +207,41 @@ def baixar_arquivo(token, arquivo, customer_id, destino="exportacoes"):
 
 def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
     """
-    Extrai o arquivo .tar.gz diretamente para a pasta destino.
-    Em seguida, remove pastas residuais da extração.
+    Extrai o único arquivo .csv contido no .tar.gz para a pasta destino.
+    Antes de extrair, remove qualquer .csv existente para evitar duplicidade.
+    Garante segurança contra path traversal.
     """
-    # Extrai tudo
-    with tarfile.open(caminho_tar_gz, "r:gz") as tar_gz:
-        tar_gz.extractall(destino, filter="data")
+    # Garante que a pasta exista
+    os.makedirs(destino, exist_ok=True)
 
-    os.remove(caminho_tar_gz)  # Remove o .tar.gz
+    # Limpa CSVs antigos na pasta
+    for f in os.listdir(destino):
+        if f.lower().endswith(".csv"):
+            os.remove(os.path.join(destino, f))
 
-    # Remove todas as subpastas dentro de exportacoes/
-    for nome in os.listdir(destino):
-        path = os.path.join(destino, nome)
-        if os.path.isdir(path):
-            shutil.rmtree(path)
+    with tarfile.open(caminho_tar_gz, "r:gz") as tar:
+        # Procura membros seguros e que sejam CSV
+        membros = [
+            m for m in tar.getmembers()
+            if m.name.lower().endswith(".csv")
+            and not os.path.isabs(m.name)
+            and ".." not in os.path.normpath(m.name).split(os.sep)
+        ]
+
+        if not membros:
+            raise Exception("Nenhum arquivo CSV válido encontrado no .tar.gz.")
+
+        membro = membros[0]
+        nome_destino = os.path.join(destino, os.path.basename(membro.name))
+
+        # Extração segura: abre o membro como stream e grava no disco
+        with tar.extractfile(membro) as src, open(nome_destino, "wb") as out:
+            shutil.copyfileobj(src, out)
+
+        logging.info(f"Arquivo CSV extraído com sucesso para: {nome_destino}")
+
+    # Remove o .tar.gz baixado
+    os.remove(caminho_tar_gz)
 
 def main():
     """
