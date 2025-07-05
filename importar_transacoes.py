@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 
 load_dotenv()
@@ -22,6 +23,11 @@ logging.basicConfig(
     encoding='utf-8'
 )
 
+@retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        retry=retry_if_exception_type(requests.exceptions.RequestException)
+)
 def request_get(url, **kwargs):
     try:
         resp = requests.get(url, **kwargs)
@@ -34,6 +40,11 @@ def request_get(url, **kwargs):
         logging.critical(f"Falha em GET: {url} - {e}")
         raise
 
+@retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        retry=retry_if_exception_type(requests.exceptions.RequestException)
+)
 def request_post(url, **kwargs):
     try:
         resp = requests.post(url, **kwargs)
