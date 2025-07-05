@@ -228,8 +228,13 @@ def extrair_e_limpar(caminho_tar_gz, destino="exportacoes"):
     # Limpa CSVs antigos na pasta
     for f in os.listdir(destino):
         if f.lower().endswith(".csv"):
-            os.remove(os.path.join(destino, f))
+            try:
+                os.remove(os.path.join(destino, f))
+                logging.info(f"Arquivo CSV antigo removido: {f}")
+            except Exception as e:
+                logging.warning(f"Falha ao remover {f}: {e}")
 
+    # Extrai apenas o CSV seguro
     with tarfile.open(caminho_tar_gz, "r:gz") as tar:
         # Procura membros seguros e que sejam CSV
         membros = [
