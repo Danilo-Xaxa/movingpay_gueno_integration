@@ -146,13 +146,16 @@ def main():
 
         token = autenticar_gueno()
         enviar_arquivo_gueno(token, caminho_arquivo_csv)
+        logging.shutdown()
 
     except StopIteration:
         # Nenhum .csv encontrado
         logging.critical("Nenhum arquivo CSV encontrado na pasta 'exportacoes/'.")
+        logging.shutdown()
     except Exception as e:
         # Qualquer outra exceção (autenticação, rede, etc.)
         logging.critical(f"Erro durante a importação para a Gueno: {e}")
+        logging.shutdown()
 
 # Roda o main apenas se este arquivo for o executado diretamente
 if __name__ == "__main__":

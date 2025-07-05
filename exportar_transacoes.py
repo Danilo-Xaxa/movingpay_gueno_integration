@@ -281,9 +281,11 @@ def main():
         logging.info(f"Arquivo contábil encontrado: {arquivo['arquivo']} (ID: {arquivo['id']})")
         caminho = baixar_arquivo(token, arquivo, customer_id)
         extrair_e_limpar(caminho)
+        logging.shutdown()
 
     except Exception as e:
         logging.critical(f"Erro durante a execução: {e}")
+        logging.shutdown()
 
 # Ponto de entrada do script
 if __name__ == "__main__":
