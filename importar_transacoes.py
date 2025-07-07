@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import time
+import traceback
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
@@ -138,7 +139,7 @@ def obter_item_id_gueno(token, nome_arquivo_csv):
             logging.info(f"Arquivo encontrado na lista de imports: ID {item['_id']}.")
             return item["_id"]
 
-    raise Exception("Arquivo enviado não encontrado na lista de imports da Gueno.")
+    raise Exception(f"Arquivo '{nome_arquivo_csv}' enviado não encontrado na lista de imports da Gueno.")
 
 def processar_arquivo_gueno(token, item_id):
     """
@@ -201,6 +202,7 @@ def main():
         # Disparar processamento
         processar_arquivo_gueno(token, item_id)
 
+        logging.info("Pipeline de importação e processamento concluído com sucesso.")
         logging.shutdown()
 
     except StopIteration:
@@ -210,6 +212,8 @@ def main():
     except Exception as e:
         # Qualquer outra exceção (autenticação, rede, etc.)
         logging.critical(f"Erro durante a importação para a Gueno: {e}")
+        logging.critical("Stack trace:")
+        logging.critical(traceback.format_exc())
         logging.shutdown()
 
 # Roda o main apenas se este arquivo for o executado diretamente
