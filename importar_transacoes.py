@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+import time
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
@@ -111,9 +112,54 @@ def enviar_arquivo_gueno(token, caminho_arquivo_csv):
         resposta = request_post(url, headers=headers, files=files, timeout=REQUEST_TIMEOUT)
 
     if resposta.status_code in [200, 201]:
-        logging.info("Arquivo enviado com sucesso para a Gueno.")
+        logging.info("Arquivo importado na Gueno com sucesso.")
     else:
-        logging.critical(f"Erro ao enviar arquivo para a Gueno: {resposta.status_code} - {resposta.text}")
+        logging.critical(f"Erro ao importar arquivo na Gueno: {resposta.status_code} - {resposta.text}")
+        resposta.raise_for_status()
+
+def obter_item_id_gueno(token, nome_arquivo_csv):
+    """
+    Faz GET na lista de imports da Gueno e retorna o _id do item
+    cujo originalName bate com o CSV enviado.
+    """
+    url = "https://api-gueno.prd.gueno.com/api/kyt-import?page=0&limit=10"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "client-key": os.getenv("GUENO_CLIENT_KEY"),
+        "x-gueno-type-product": "DASHBOARD"
+    }
+
+    resposta = request_get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    dados = resposta.json()
+
+    items = dados.get("data", {}).get("items", [])
+    for item in items:
+        if item.get("originalName") == nome_arquivo_csv:
+            logging.info(f"Arquivo encontrado na lista de imports: ID {item['_id']}.")
+            return item["_id"]
+
+    raise Exception("Arquivo enviado não encontrado na lista de imports da Gueno.")
+
+def processar_arquivo_gueno(token, item_id):
+    """
+    Dispara o processamento do arquivo já importado na Gueno via POST /verify.
+    """
+    now_ms = int(time.time() * 1000)
+    url = f"https://api-gueno.prd.gueno.com/api/kyt/transactions/all/verify?itemId={item_id}&fromDate={now_ms}&toDate={now_ms}"
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "client-key": os.getenv("GUENO_CLIENT_KEY"),
+        "content-type": "application/json",
+        "x-gueno-type-product": "DASHBOARD"
+    }
+
+    resposta = request_post(url, headers=headers, json={}, timeout=REQUEST_TIMEOUT)
+
+    if resposta.status_code in [200, 201]:
+        logging.info(f"Processamento do arquivo realizado com sucesso: itemId {item_id}.")
+    else:
+        logging.critical(f"Erro ao processar arquivo na Gueno: {resposta.status_code} - {resposta.text}")
         resposta.raise_for_status()
 
 def main():
@@ -122,6 +168,8 @@ def main():
     1. Encontra o primeiro arquivo .csv dentro da pasta 'exportacoes/'
     2. Autentica na Gueno
     3. Envia o arquivo para a API de importação
+    4. Busca o ID do arquivo importado
+    5. Dispara o processamento do arquivo na Gueno
     """
     try:
         if not os.path.isdir("exportacoes"):
@@ -146,6 +194,13 @@ def main():
 
         token = autenticar_gueno()
         enviar_arquivo_gueno(token, caminho_arquivo_csv)
+
+        # Buscar ID do arquivo importado
+        item_id = obter_item_id_gueno(token, nome_arquivo_csv)
+
+        # Disparar processamento
+        processar_arquivo_gueno(token, item_id)
+
         logging.shutdown()
 
     except StopIteration:
