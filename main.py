@@ -38,11 +38,11 @@ def executar_script(nome_script):
         logging.info(f"Script {nome_script} executado com sucesso.")
 
         # Se houver algo na saída padrão, registra no log
-        if resultado.stdout:
+        if resultado.stdout.strip():
             logging.info(f"[stdout - {nome_script}]\n{resultado.stdout.strip()}")
 
         # Se houver algo na saída de erro, registra como warning
-        if resultado.stderr:
+        if resultado.stderr.strip():
             logging.warning(f"[stderr - {nome_script}]\n{resultado.stderr.strip()}")
 
     except subprocess.CalledProcessError as e:
