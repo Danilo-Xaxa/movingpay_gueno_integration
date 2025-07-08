@@ -17,6 +17,10 @@ for var in ['MOVINGPAY_EMAIL', 'MOVINGPAY_PASSWORD']:
 
 REQUEST_TIMEOUT = (10, 60)
 
+EXPORTACOES_DIR = "exportacoes"
+CAPTURAS_DIR = os.path.join(EXPORTACOES_DIR, "capturas")
+FICHA_CADASTRAL_DIR = os.path.join(EXPORTACOES_DIR, "ficha_cadastral")
+
 # === Configuração de logging ===
 # Toda a execução será registrada no arquivo 'exportacoes.log'
 logging.basicConfig(
@@ -99,7 +103,7 @@ def autenticar():
     dados = resposta.json()
     return dados["access_token"], dados["customer_id"], dados["user_id"]
 
-def solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim):
+def solicitar_relatorio_capturas(token, customer_id, user_id, data_inicio, data_fim):
     """
     Solicita a geração de um relatório contábil na MovingPay.
     O arquivo será gerado de forma assíncrona.
@@ -134,7 +138,35 @@ def solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim):
     resposta.raise_for_status()
     logging.info("Relatório contábil solicitado com sucesso.")
 
-def buscar_arquivo_compativel(token, customer_id, data_inicio, data_fim):
+def solicitar_relatorio_ficha_cadastral(token, customer_id, user_id, data_inicio, data_fim):
+    """
+    Solicita a geração de um relatório de ficha cadastral na MovingPay.
+    O arquivo será gerado de forma assíncrona.
+    """
+    url = "https://api-reports.movingpay.com.br/csv/customized/gueno/estabelecimentos/ficha-cadastral"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "customer": str(customer_id),
+        "x-mvpay-origin": "web"
+    }
+
+    payload = {
+        "cancelToken": {"promise": {}},
+        "startDate": f"{data_inicio} 00:00:00",
+        "finishDate": f"{data_fim} 23:59:59",
+        "customerId": customer_id,
+        "userId": user_id,
+        "codigoUnidadeNegocios": 0,
+        "newReports": False,
+        "extension": "csv",
+        "tipoRelatorioGueno": "ficha_cadastral"
+    }
+
+    resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
+    resposta.raise_for_status()
+    logging.info("Relatório ficha cadastral solicitado com sucesso.")
+
+def buscar_arquivo_compativel(token, customer_id, prefixo):
     """
     Busca na API o arquivo .tar.gz compatível com o intervalo solicitado.
     Retorna o mais recente dentre os válidos.
@@ -158,17 +190,11 @@ def buscar_arquivo_compativel(token, customer_id, data_inicio, data_fim):
     resposta.raise_for_status()
     arquivos = resposta.json().get("data", [])
 
-    # Formato do nome esperado no nome do arquivo
-    #data_inicio_fmt = datetime.strptime(data_inicio, "%Y-%m-%d").strftime("%d.%m.%Y")
-    #data_fim_fmt = datetime.strptime(data_fim, "%Y-%m-%d").strftime("%d.%m.%Y")
-    #intervalo_str = f"{data_inicio_fmt}A{data_fim_fmt}"
-
     # Filtra arquivos válidos
     arquivos_validos = [
         arq for arq in arquivos
-        if arq["arquivo"].startswith("GUENO.CAPTURAS")
+        if arq["arquivo"].startswith(prefixo)
         and arq["arquivo"].endswith(".tar.gz")
-        #and intervalo_str in arq["arquivo"]
     ]
 
     if not arquivos_validos:
@@ -264,28 +290,42 @@ def main():
     Pipeline principal:
     1. Define o intervalo de datas
     2. Autentica na MovingPay
-    3. Solicita geração do relatório
+    3. Solicita geração dos relatórios (ficha cadastral primeiro)
     4. Aguarda 60 segundos
-    5. Busca o arquivo gerado
-    6. Baixa e extrai o CSV
+    5. Busca os arquivos gerados
+    6. Baixa e extrai os CSVs nas subpastas corretas
     """
     try:
         logging.info("Iniciando exportação contábil da MovingPay...")
 
         data_inicio, data_fim = obter_datas_referencia()
         token, customer_id, user_id = autenticar()
-        solicitar_relatorio(token, customer_id, user_id, data_inicio, data_fim)
 
-        logging.info("Aguardando 60 segundos antes de buscar o relatório...")
+        # Ficha cadastral primeiro
+        solicitar_relatorio_ficha_cadastral(token, customer_id, user_id, data_inicio, data_fim)
+        solicitar_relatorio_capturas(token, customer_id, user_id, data_inicio, data_fim)
+
+        logging.info("Aguardando 60 segundos antes de buscar os relatórios...")
         time.sleep(60)
 
-        arquivo = buscar_arquivo_compativel(token, customer_id, data_inicio, data_fim)
-        if not arquivo:
-            raise Exception("Nenhum arquivo compatível encontrado.")
+        # Ficha cadastral
+        arquivo_ficha_cadastral = buscar_arquivo_compativel(token, customer_id, "GUENO.FICHACADASTRAL")
+        if arquivo_ficha_cadastral:
+            logging.info(f"Arquivo ficha cadastral encontrado: {arquivo_ficha_cadastral['arquivo']} (ID: {arquivo_ficha_cadastral['id']})")
+            caminho = baixar_arquivo(token, arquivo_ficha_cadastral, customer_id, destino=FICHA_CADASTRAL_DIR)
+            extrair_e_limpar(caminho, destino=FICHA_CADASTRAL_DIR)
+        else:
+            logging.warning("Nenhum arquivo ficha cadastral encontrado.")
 
-        logging.info(f"Arquivo contábil encontrado: {arquivo['arquivo']} (ID: {arquivo['id']})")
-        caminho = baixar_arquivo(token, arquivo, customer_id)
-        extrair_e_limpar(caminho)
+        # Capturas
+        arquivo_capturas = buscar_arquivo_compativel(token, customer_id, "GUENO.CAPTURAS")
+        if arquivo_capturas:
+            logging.info(f"Arquivo contábil encontrado: {arquivo_capturas['arquivo']} (ID: {arquivo_capturas['id']})")
+            caminho = baixar_arquivo(token, arquivo_capturas, customer_id, destino=CAPTURAS_DIR)
+            extrair_e_limpar(caminho, destino=CAPTURAS_DIR)
+        else:
+            raise Exception("Nenhum arquivo capturas compatível encontrado.")
+
         logging.shutdown()
 
     except Exception as e:
