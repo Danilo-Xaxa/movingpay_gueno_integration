@@ -105,7 +105,7 @@ def autenticar():
 
 def solicitar_relatorio_capturas(token, customer_id, user_id, data_inicio, data_fim):
     """
-    Solicita a geração de um relatório contábil na MovingPay.
+    Solicita a geração de um relatório de capturas na MovingPay.
     O arquivo será gerado de forma assíncrona.
     """
     url = "https://api-reports.movingpay.com.br/csv/customized/gueno/capturas"
@@ -136,7 +136,7 @@ def solicitar_relatorio_capturas(token, customer_id, user_id, data_inicio, data_
 
     resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
-    logging.info("Relatório contábil solicitado com sucesso.")
+    logging.info("Relatório de capturas solicitado com sucesso.")
 
 def solicitar_relatorio_ficha_cadastral(token, customer_id, user_id, data_inicio, data_fim):
     """
@@ -164,7 +164,7 @@ def solicitar_relatorio_ficha_cadastral(token, customer_id, user_id, data_inicio
 
     resposta = request_post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
     resposta.raise_for_status()
-    logging.info("Relatório ficha cadastral solicitado com sucesso.")
+    logging.info("Relatório de ficha cadastral solicitado com sucesso.")
 
 def buscar_arquivo_compativel(token, customer_id, prefixo):
     """
@@ -296,7 +296,7 @@ def main():
     6. Baixa e extrai os CSVs nas subpastas corretas
     """
     try:
-        logging.info("Iniciando exportação contábil da MovingPay...")
+        logging.info("Iniciando exportações da MovingPay...")
 
         data_inicio, data_fim = obter_datas_referencia()
         token, customer_id, user_id = autenticar()
@@ -311,20 +311,20 @@ def main():
         # Ficha cadastral
         arquivo_ficha_cadastral = buscar_arquivo_compativel(token, customer_id, "GUENO.FICHACADASTRAL")
         if arquivo_ficha_cadastral:
-            logging.info(f"Arquivo ficha cadastral encontrado: {arquivo_ficha_cadastral['arquivo']} (ID: {arquivo_ficha_cadastral['id']})")
+            logging.info(f"Arquivo de ficha cadastral encontrado: {arquivo_ficha_cadastral['arquivo']} (ID: {arquivo_ficha_cadastral['id']})")
             caminho = baixar_arquivo(token, arquivo_ficha_cadastral, customer_id, destino=FICHA_CADASTRAL_DIR)
             extrair_e_limpar(caminho, destino=FICHA_CADASTRAL_DIR)
         else:
-            logging.warning("Nenhum arquivo ficha cadastral encontrado.")
+            logging.warning("Nenhum arquivo de ficha cadastral encontrado.")
 
         # Capturas
         arquivo_capturas = buscar_arquivo_compativel(token, customer_id, "GUENO.CAPTURAS")
         if arquivo_capturas:
-            logging.info(f"Arquivo contábil encontrado: {arquivo_capturas['arquivo']} (ID: {arquivo_capturas['id']})")
+            logging.info(f"Arquivo de capturas encontrado: {arquivo_capturas['arquivo']} (ID: {arquivo_capturas['id']})")
             caminho = baixar_arquivo(token, arquivo_capturas, customer_id, destino=CAPTURAS_DIR)
             extrair_e_limpar(caminho, destino=CAPTURAS_DIR)
         else:
-            raise Exception("Nenhum arquivo capturas compatível encontrado.")
+            raise Exception("Nenhum arquivo de capturas compatível encontrado.")
 
         logging.shutdown()
 
