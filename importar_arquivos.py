@@ -88,7 +88,7 @@ def autenticar_gueno():
 
 def enviar_arquivo_gueno(token, caminho_arquivo_csv):
     """
-    Envia o arquivo CSV para a API da Gueno responsável por importar transações.
+    Envia o arquivo CSV para a API da Gueno responsável por importar arquivos.
 
     Parâmetros:
     - token (str): token JWT retornado por autenticar_gueno()

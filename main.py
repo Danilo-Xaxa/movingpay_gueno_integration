@@ -56,25 +56,25 @@ def executar_script(nome_script):
 def main():
     """
     Executa os dois scripts do pipeline em sequência:
-    1. exportar_transacoes.py — exporta arquivo da MovingPay
-    2. importar_transacoes.py — importa arquivo para a Gueno
+    1. exportar_arquivos.py — exporta arquivo da MovingPay
+    2. importar_arquivos.py — importa arquivo para a Gueno
 
     Se qualquer etapa falhar, a execução é interrompida com logs detalhados.
     """
     logging.info(f"==== Início da execução integrada em {datetime.now()} ====")
 
     try:
-        executar_script("exportar_transacoes.py")
+        executar_script("exportar_arquivos.py")
     except Exception:
-        logging.critical("Execução interrompida por erro crítico ao EXPORTAR transações.")
+        logging.critical("Execução interrompida por erro crítico ao EXPORTAR arquivos.")
         logging.critical("Traceback:")
         logging.critical(traceback.format_exc())
         sys.exit(1)
 
     try:
-        executar_script("importar_transacoes.py")
+        executar_script("importar_arquivos.py")
     except Exception:
-        logging.critical("Execução interrompida por erro crítico ao IMPORTAR transações.")
+        logging.critical("Execução interrompida por erro crítico ao IMPORTAR arquivos.")
         logging.critical("Traceback:")
         logging.critical(traceback.format_exc())
         sys.exit(1)
